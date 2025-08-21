@@ -84,11 +84,10 @@ var GameItem = /** @class */ (function () {
                 this.falling = false;
             }
         }
-        // Анимация удаления
         if (this.removing) {
             this.scale -= 0.1;
             if (this.scale <= 0) {
-                return true; // Элемент готов к удалению
+                return true; 
             }
             animating = true;
         }
@@ -160,7 +159,6 @@ var Match3Game = /** @class */ (function () {
         if (horizontalCount >= 3)
             return true;
         var verticalCount = 1;
-        // Вверх
         for (var i = y - 1; i >= 0; i--) {
             var item = this.grid[i] && this.grid[i][x] ? this.grid[i][x] : null;
             if (item && item.type === type) {
@@ -170,7 +168,6 @@ var Match3Game = /** @class */ (function () {
                 break;
             }
         }
-        // Вниз
         for (var i = y + 1; i < GRID_SIZE; i++) {
             var item = this.grid[i] && this.grid[i][x] ? this.grid[i][x] : null;
             if (item && item.type === type) {
