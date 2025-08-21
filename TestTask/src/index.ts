@@ -115,12 +115,10 @@ class GameItem {
                 this.falling = false;
             }
         }
-        
-        // Анимация удаления
         if (this.removing) {
             this.scale -= 0.1;
             if (this.scale <= 0) {
-                return true; // Элемент готов к удалению
+                return true; 
             }
             animating = true;
         }
@@ -213,7 +211,6 @@ class Match3Game {
             
         let verticalCount = 1;
             
-        // Вверх
         for (let i = y - 1; i >= 0; i--) {
             const item: GameItem | null = this.grid[i] && this.grid[i][x] ? this.grid[i][x] : null;
             if (item && item.type === type) {
@@ -223,7 +220,6 @@ class Match3Game {
             }
         }
             
-        // Вниз
         for (let i = y + 1; i < GRID_SIZE; i++) {
             const item: GameItem | null = this.grid[i] && this.grid[i][x] ? this.grid[i][x] : null;
             if (item && item.type === type) {
