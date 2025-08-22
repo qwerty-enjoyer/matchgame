@@ -115,6 +115,8 @@ class GameItem {
                 this.falling = false;
             }
         }
+        
+        // Анимация удаления
         if (this.removing) {
             this.scale -= 0.1;
             if (this.scale <= 0) {
@@ -148,6 +150,7 @@ class Match3Game {
     private dragStartX: number;
     private dragStartY: number;
     private isSwapping: boolean;
+    private isAnimating: boolean;
     private scoreElement: HTMLElement | null;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -165,6 +168,7 @@ class Match3Game {
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.isSwapping = false;
+        this.isAnimating = false;
         this.scoreElement = document.getElementById('score');
 
         this.initGrid();
@@ -246,7 +250,7 @@ class Match3Game {
     }
         
     private onMouseDown(e: MouseEvent): void {
-        if (this.isSwapping) return; 
+        if (this.isSwapping || this.isAnimating) return; // Блокируем ввод во время любой анимации
         
         const pos: Position = this.getGridPosition(e.clientX, e.clientY);
         if (pos.x >= 0 && pos.x < GRID_SIZE && pos.y >= 0 && pos.y < GRID_SIZE) {
@@ -258,7 +262,7 @@ class Match3Game {
     }
         
     private onMouseMove(e: MouseEvent): void {
-        if (!this.isDragging || !this.selectedItem || this.isSwapping) return;
+        if (!this.isDragging || !this.selectedItem || this.isSwapping || this.isAnimating) return;
             
         const deltaX: number = e.clientX - this.dragStartX;
         const deltaY: number = e.clientY - this.dragStartY;
@@ -289,15 +293,17 @@ class Match3Game {
     }
         
     private trySwap(x1: number, y1: number, x2: number, y2: number): void {
-        if (this.isSwapping) return;
+        if (this.isSwapping || this.isAnimating) return;
         
         this.isSwapping = true;
+        this.isAnimating = true;
         
         const item1: GameItem | null = this.grid[y1] && this.grid[y1][x1] ? this.grid[y1][x1] : null;
         const item2: GameItem | null = this.grid[y2] && this.grid[y2][x2] ? this.grid[y2][x2] : null;
         
         if (!item1 || !item2) {
             this.isSwapping = false;
+            this.isAnimating = false;
             return;
         }
         
@@ -307,11 +313,12 @@ class Match3Game {
         this.grid[y1][x1] = item2;
         this.grid[y2][x2] = item1;
         
+        // Обновляем логические позиции
         item1.x = x2;
         item1.y = y2;
         item2.x = x1;
         item2.y = y1;
-        
+    
         setTimeout(() => {
             const matches: MatchPosition[] = this.findMatches();
             
@@ -321,18 +328,17 @@ class Match3Game {
                 
                 this.grid[y1][x1] = item1;
                 this.grid[y2][x2] = item2;
-                
                 item1.x = x1;
                 item1.y = y1;
                 item2.x = x2;
                 item2.y = y2;
-                
                 setTimeout(() => {
                     this.isSwapping = false;
+                    this.isAnimating = false;
                 }, 300);
             } else {
-                this.processMatches();
                 this.isSwapping = false;
+                this.processMatches();
             }
         }, 300); 
     }
@@ -366,7 +372,7 @@ class Match3Game {
                 }
             }
         }
-        
+            
         for (let x = 0; x < GRID_SIZE; x++) {
             let count: number = 1;
             const firstItem: GameItem | null = this.grid[0] && this.grid[0][x] ? this.grid[0][x] : null;
@@ -422,8 +428,11 @@ class Match3Game {
                 this.dropItems();
                 this.updateScoreDisplay();
             }, 200);
+        } else {
+            this.checkAnimationsComplete();
         }
     }
+    
     
     private updateScoreDisplay(): void {
         if (this.scoreElement) {
@@ -454,7 +463,6 @@ class Match3Game {
                     writeIndex--;
                 }
             }
-                
             for (let y = writeIndex; y >= 0; y--) {
                 const type: number = Math.floor(Math.random() * ITEM_TYPES);
                 const item: GameItem = new GameItem(type, x, y);
@@ -469,6 +477,33 @@ class Match3Game {
             setTimeout(() => {
                 this.processMatches();
             }, 500);
+        } else {
+            this.checkAnimationsComplete();
+        }
+    }
+    
+    private checkAnimationsComplete(): void {
+        let hasActiveAnimations = false;
+        
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                const item: GameItem | null = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
+                if (item && (item.swapping || item.falling || item.removing)) {
+                    hasActiveAnimations = true;
+                    break;
+                }
+            }
+            if (hasActiveAnimations) break;
+        }
+        
+        if (!hasActiveAnimations) {
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 100); 
+        } else {
+            setTimeout(() => {
+                this.checkAnimationsComplete();
+            }, 100);
         }
     }
         
@@ -501,7 +536,7 @@ class Match3Game {
             }
         }
             
-        if (this.selectedItem && !this.isSwapping) {
+        if (this.selectedItem && !this.isSwapping && !this.isAnimating) {
             const x: number = this.selectedItem.x * CELL_SIZE;
             const y: number = this.selectedItem.y * CELL_SIZE;
                 
