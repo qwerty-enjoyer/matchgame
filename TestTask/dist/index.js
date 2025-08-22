@@ -87,7 +87,7 @@ var GameItem = /** @class */ (function () {
         if (this.removing) {
             this.scale -= 0.1;
             if (this.scale <= 0) {
-                return true; 
+                return true; // Элемент готов к удалению
             }
             animating = true;
         }
@@ -119,6 +119,7 @@ var Match3Game = /** @class */ (function () {
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.isSwapping = false;
+        this.isAnimating = false;
         this.scoreElement = document.getElementById('score');
         this.initGrid();
         this.setupEventListeners();
@@ -192,8 +193,8 @@ var Match3Game = /** @class */ (function () {
         return { x: x, y: y };
     };
     Match3Game.prototype.onMouseDown = function (e) {
-        if (this.isSwapping)
-            return;
+        if (this.isSwapping || this.isAnimating)
+            return; // Блокируем ввод во время любой анимации
         var pos = this.getGridPosition(e.clientX, e.clientY);
         if (pos.x >= 0 && pos.x < GRID_SIZE && pos.y >= 0 && pos.y < GRID_SIZE) {
             this.selectedItem = { x: pos.x, y: pos.y };
@@ -203,7 +204,7 @@ var Match3Game = /** @class */ (function () {
         }
     };
     Match3Game.prototype.onMouseMove = function (e) {
-        if (!this.isDragging || !this.selectedItem || this.isSwapping)
+        if (!this.isDragging || !this.selectedItem || this.isSwapping || this.isAnimating)
             return;
         var deltaX = e.clientX - this.dragStartX;
         var deltaY = e.clientY - this.dragStartY;
@@ -230,19 +231,22 @@ var Match3Game = /** @class */ (function () {
     };
     Match3Game.prototype.trySwap = function (x1, y1, x2, y2) {
         var _this = this;
-        if (this.isSwapping)
+        if (this.isSwapping || this.isAnimating)
             return;
         this.isSwapping = true;
+        this.isAnimating = true;
         var item1 = this.grid[y1] && this.grid[y1][x1] ? this.grid[y1][x1] : null;
         var item2 = this.grid[y2] && this.grid[y2][x2] ? this.grid[y2][x2] : null;
         if (!item1 || !item2) {
             this.isSwapping = false;
+            this.isAnimating = false;
             return;
         }
         item1.startSwapAnimation(x2 * CELL_SIZE + CELL_SIZE / 2, y2 * CELL_SIZE + CELL_SIZE / 2);
         item2.startSwapAnimation(x1 * CELL_SIZE + CELL_SIZE / 2, y1 * CELL_SIZE + CELL_SIZE / 2);
         this.grid[y1][x1] = item2;
         this.grid[y2][x2] = item1;
+        // Обновляем логические позиции
         item1.x = x2;
         item1.y = y2;
         item2.x = x1;
@@ -260,11 +264,12 @@ var Match3Game = /** @class */ (function () {
                 item2.y = y2;
                 setTimeout(function () {
                     _this.isSwapping = false;
+                    _this.isAnimating = false;
                 }, 300);
             }
             else {
-                _this.processMatches();
                 _this.isSwapping = false;
+                _this.processMatches();
             }
         }, 300);
     };
@@ -346,6 +351,9 @@ var Match3Game = /** @class */ (function () {
                 _this.updateScoreDisplay();
             }, 200);
         }
+        else {
+            this.checkAnimationsComplete();
+        }
     };
     Match3Game.prototype.updateScoreDisplay = function () {
         if (this.scoreElement) {
@@ -387,6 +395,34 @@ var Match3Game = /** @class */ (function () {
                 _this.processMatches();
             }, 500);
         }
+        else {
+            this.checkAnimationsComplete();
+        }
+    };
+    Match3Game.prototype.checkAnimationsComplete = function () {
+        var _this = this;
+        var hasActiveAnimations = false;
+        for (var y = 0; y < GRID_SIZE; y++) {
+            for (var x = 0; x < GRID_SIZE; x++) {
+                var item = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
+                if (item && (item.swapping || item.falling || item.removing)) {
+                    hasActiveAnimations = true;
+                    break;
+                }
+            }
+            if (hasActiveAnimations)
+                break;
+        }
+        if (!hasActiveAnimations) {
+            setTimeout(function () {
+                _this.isAnimating = false;
+            }, 100);
+        }
+        else {
+            setTimeout(function () {
+                _this.checkAnimationsComplete();
+            }, 100);
+        }
     };
     Match3Game.prototype.draw = function () {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -412,7 +448,7 @@ var Match3Game = /** @class */ (function () {
                 }
             }
         }
-        if (this.selectedItem && !this.isSwapping) {
+        if (this.selectedItem && !this.isSwapping && !this.isAnimating) {
             var x = this.selectedItem.x * CELL_SIZE;
             var y = this.selectedItem.y * CELL_SIZE;
             this.ctx.strokeStyle = '#ffff00';
@@ -450,6 +486,7 @@ if (canvasElement) {
         console.error('Failed to initialize game:', error);
     }
 }
+
 else {
     console.error('Canvas element not found');
 }
