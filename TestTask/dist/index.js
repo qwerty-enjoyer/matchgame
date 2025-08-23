@@ -1,6 +1,6 @@
 "use strict";
-var GRID_SIZE = 8;
-var CELL_SIZE = 60;
+var GRID_SIZE = 10;
+var CELL_SIZE = 65;
 var ITEM_TYPES = 5;
 var COLORS = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
 var SHAPES = ['circle', 'square', 'triangle', 'diamond', 'star'];
@@ -333,62 +333,102 @@ var Match3Game = /** @class */ (function () {
         }, 300);
     };
     Match3Game.prototype.findMatches = function () {
-        var matches = new Set();
-        for (var y = 0; y < GRID_SIZE; y++) {
-            var count = 1;
-            var firstItem = this.grid[y] && this.grid[y][0] ? this.grid[y][0] : null;
-            var currentType = firstItem ? firstItem.type : -1;
-            for (var x = 1; x < GRID_SIZE; x++) {
-                var item = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
-                if (item && item.type === currentType && currentType !== -1) {
-                    count++;
-                }
-                else {
-                    if (count >= 3) {
-                        for (var i = x - count; i < x; i++) {
-                            matches.add("".concat(i, ",").concat(y));
-                        }
+    var matches = new Set();
+
+    // --- горизонталі ---
+    for (var y = 0; y < GRID_SIZE; y++) {
+        var count = 1;
+        var firstItem = this.grid[y] && this.grid[y][0] ? this.grid[y][0] : null;
+        var currentType = firstItem ? firstItem.type : -1;
+
+        for (var x = 1; x < GRID_SIZE; x++) {
+            var item = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
+
+            if (item && item.type === currentType && currentType !== -1) {
+                count++;
+            } else {
+                if (count >= 5) {
+                    for (var i = 0; i < GRID_SIZE; i++) {
+                        matches.add(`${i},${y}`);
                     }
-                    count = 1;
-                    currentType = item ? item.type : -1;
+                } else if (count >= 3) {
+                    for (var i = x - count; i < x; i++) {
+                        matches.add(`${i},${y}`);
+                    }
                 }
-            }
-            if (count >= 3) {
-                for (var i = GRID_SIZE - count; i < GRID_SIZE; i++) {
-                    matches.add("".concat(i, ",").concat(y));
-                }
+                count = 1;
+                currentType = item ? item.type : -1;
             }
         }
-        for (var x = 0; x < GRID_SIZE; x++) {
-            var count = 1;
-            var firstItem = this.grid[0] && this.grid[0][x] ? this.grid[0][x] : null;
-            var currentType = firstItem ? firstItem.type : -1;
-            for (var y = 1; y < GRID_SIZE; y++) {
-                var item = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
-                if (item && item.type === currentType && currentType !== -1) {
-                    count++;
-                }
-                else {
-                    if (count >= 3) {
-                        for (var i = y - count; i < y; i++) {
-                            matches.add("".concat(x, ",").concat(i));
-                        }
-                    }
-                    count = 1;
-                    currentType = item ? item.type : -1;
-                }
+        if (count >= 5) {
+            for (var i = 0; i < GRID_SIZE; i++) {
+                matches.add(`${i},${y}`);
             }
-            if (count >= 3) {
-                for (var i = GRID_SIZE - count; i < GRID_SIZE; i++) {
-                    matches.add("".concat(x, ",").concat(i));
-                }
+        } else if (count >= 3) {
+            for (var i = GRID_SIZE - count; i < GRID_SIZE; i++) {
+                matches.add(`${i},${y}`);
             }
         }
-        return Array.from(matches).map(function (pos) {
-            var _a = pos.split(',').map(Number), x = _a[0], y = _a[1];
-            return { x: x, y: y };
-        });
-    };
+    }
+    for (var y = 0; y < GRID_SIZE - 1; y++) {
+        for (var x = 0; x < GRID_SIZE - 1; x++) {
+            var item = this.grid[y][x];
+            if (
+                item &&
+                this.grid[y][x + 1] &&
+                this.grid[y + 1][x] &&
+                this.grid[y + 1][x + 1] &&
+                item.type === this.grid[y][x + 1].type &&
+                item.type === this.grid[y + 1][x].type &&
+                item.type === this.grid[y + 1][x + 1].type
+            ) {
+                matches.add(`${x},${y}`);
+                matches.add(`${x+1},${y}`);
+                matches.add(`${x},${y+1}`);
+                matches.add(`${x+1},${y+1}`);
+            }
+        }
+    }
+    for (var x = 0; x < GRID_SIZE; x++) {
+        var count = 1;
+        var firstItem = this.grid[0] && this.grid[0][x] ? this.grid[0][x] : null;
+        var currentType = firstItem ? firstItem.type : -1;
+
+        for (var y = 1; y < GRID_SIZE; y++) {
+            var item = this.grid[y] && this.grid[y][x] ? this.grid[y][x] : null;
+
+            if (item && item.type === currentType && currentType !== -1) {
+                count++;
+            } else {
+                if (count >= 5) {
+                    for (var i = 0; i < GRID_SIZE; i++) {
+                        matches.add(`${x},${i}`);
+                    }
+                } else if (count >= 3) {
+                    for (var i = y - count; i < y; i++) {
+                        matches.add(`${x},${i}`);
+                    }
+                }
+                count = 1;
+                currentType = item ? item.type : -1;
+            }
+        }
+        if (count >= 5) {
+            for (var i = 0; i < GRID_SIZE; i++) {
+                matches.add(`${x},${i}`);
+            }
+        } else if (count >= 3) {
+            for (var i = GRID_SIZE - count; i < GRID_SIZE; i++) {
+                matches.add(`${x},${i}`);
+            }
+        }
+    }
+    return Array.from(matches).map(function (pos) {
+        var [x, y] = pos.split(',').map(Number);
+        return { x: x, y: y };
+    });
+};
+
     Match3Game.prototype.processMatches = function () {
         var _this = this;
         var matches = this.findMatches();
